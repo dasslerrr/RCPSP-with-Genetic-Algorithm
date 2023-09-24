@@ -1,4 +1,4 @@
-Resource-Constrained Project Scheduling Problem (RCPSP) Genetic Algorithm
+# Resource-Constrained Project Scheduling Problem (RCPSP) Genetic Algorithm
 Overview
 This Python code provides a genetic algorithm (GA) solution to the Resource-Constrained Project Scheduling Problem (RCPSP). The RCPSP involves scheduling a set of activities with resource and time constraints to minimize project duration.
 
