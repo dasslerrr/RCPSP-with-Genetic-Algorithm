@@ -38,3 +38,6 @@ Customization
 You can modify the problem parameters by changing the activity definitions and resource constraints.
 Adjust the GA parameters (e.g., mutation rate) as needed for your specific problem.
 This code provides a basic framework for solving the RCPSP using a genetic algorithm. Further customization and fine-tuning may be required for more complex instances of the problem.
+
+![image](https://github.com/dasslerrr/RCPSP-with-Genetic-Algorithm/assets/75805648/e9f4c72e-4bcb-4fd6-8a43-59dbf13bbc88)
+![image](https://github.com/dasslerrr/RCPSP-with-Genetic-Algorithm/assets/75805648/24bfe5f2-8af0-4475-a912-f6e75a7d1f95)
