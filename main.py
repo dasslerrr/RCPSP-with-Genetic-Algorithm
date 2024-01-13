@@ -62,68 +62,58 @@ def generate_random_activity_sequence(activities):
 
     return sequence
 
+def create_schedule(activity_sequence, total_resources):
+    """
+    Creates a schedule for a given sequence of activities.
+
+    :param activity_sequence: List of Activity objects in the order they should be scheduled.
+    :param total_resources: The total available resources.
+    :return: A list of tuples, each containing an Activity object and its start time.
+    """
+    predecessors = find_predecessors(activity_sequence)
+    scheduled = []
+    finish_time = [0]
+
+    for activity in activity_sequence:
+        finish_time.sort()
+        for current_time in finish_time:
+            if is_precedence_feasible(scheduled, current_time, activity, predecessors):
+                if is_resource_feasible(scheduled, current_time, activity, total_resources):
+                    scheduled.append((activity, current_time))
+                    finish_time.append(current_time + activity.time)
+                    break
+
+    return scheduled
+
+def is_resource_feasible(scheduled, time, activity, total_resource):
+    end_time = time + activity.time
+    while time < end_time:
+        resource = 0
+        for act_tuple in scheduled:
+            if act_tuple[1] <= time < act_tuple[1] + act_tuple[0].time:
+                resource += act_tuple[0].resources
+        if activity.resources + resource > total_resource: return False
+        time += 1
+    return True
+
+def is_precedence_feasible(scheduled, time, activity, predecessors):
+    # No predecessors -> True
+    scheduled_activities = [item[0] for item in scheduled]
+    if predecessors[activity] is None:
+        return True
+    else:
+        # Check for each predecessor
+        for pred in predecessors[activity]:
+            for activity_tupel in scheduled:
+                if activity_tupel[0] == pred:
+                    if activity_tupel[1] + pred.time > time:
+                        return False
+
+    return True
+
 def print_activity_sequence(sequence):
     identifier_sequence = [activity.identifier for activity in sequence]
     print("Activity Sequence:", ' -> '.join(identifier_sequence))
-
-def create_schedule(sequence, total_resources):
-    total_time = 0
-    current_resources = 0
-    current_activities = []  # Activities running concurrently
-    completed_activities = {}  # Dictionary to store completion time of activities
-    start_times = {}  # Dictionary to store start times of activities
-
-    # Calculate predecessors
-    predecessors = find_predecessors(sequence)
-
-    for activity in sequence:
-        resources = activity.resources
-        time = activity.time
-
-        # Calculate the start time based on the completion time of the predecessors
-        if predecessors[activity]:  # Check if there are any predecessors
-            proposed_start_time = max(completed_activities.get(pred, 0) for pred in predecessors[activity])
-        else:
-            proposed_start_time = total_time
-
-        # Check if current resources and the resources required by the activity do not exceed total resources
-        if current_resources + resources <= total_resources and proposed_start_time >= total_time:
-            if activity not in start_times:  # Set start time for new activities
-                start_times[activity] = proposed_start_time
-            current_resources += resources
-            current_activities.append((activity, time))
-        else:
-            # Finish the current batch of activities and update total time
-            if current_activities:
-                max_time = max((act_time[1] for act_time in current_activities), default=0)
-                total_time = max(total_time, max_time)
-
-                for act, _ in current_activities:
-                    completed_activities[act] = total_time
-                    if act not in start_times:
-                        start_times[act] = total_time - max_time
-
-                current_resources = 0
-                current_activities = []
-
-        # Schedule the activity if it's not already scheduled and resources are available
-        if activity not in start_times and current_resources + resources <= total_resources:
-            proposed_start_time = max(total_time, max(completed_activities.get(pred, 0) for pred in predecessors[activity]))
-            start_times[activity] = proposed_start_time
-            current_resources += resources
-            current_activities.append((activity, time))
-
-    # Add the time for the last batch of activities
-    if current_activities:
-        max_time = max(current_activities, key=lambda x: x[1])[1]
-        total_time += max_time
-        for act, _ in current_activities:
-            completed_activities[act] = total_time
-            if act not in start_times:
-                start_times[act] = total_time - max_time
-
-    return {act.identifier: start for act, start in start_times.items()}
-
 
 def print_schedule(schedule):
     for activity, start_time in schedule.items():
@@ -132,76 +122,8 @@ def print_schedule(schedule):
 def evaluate_schedule(schedule) -> int:
     return schedule[-1]
 
-def crossover(parent1, parent2):
-    # Order-based crossover (OX)
-    # Choose two random crossover points
-    crossover_point1 = random.randint(0, len(parent1) - 1)
-    crossover_point2 = random.randint(crossover_point1 + 1, len(parent1))
-
-    # Create two empty offspring with the same length as the parents
-    offspring1 = [None] * len(parent1)
-    offspring2 = [None] * len(parent1)
-
-    # Copy the genetic material between the crossover points from parent1 to offspring1 and from parent2 to offspring2
-    offspring1[crossover_point1:crossover_point2] = parent1[crossover_point1:crossover_point2]
-    offspring2[crossover_point1:crossover_point2] = parent2[crossover_point1:crossover_point2]
-
-    # Fill in the remaining positions with genetic material from parent2 to offspring1 and from parent1 to offspring2
-    idx2 = crossover_point2
-    idx1 = crossover_point2
-    while None in offspring1:
-        gene2 = parent2[idx2 % len(parent2)]
-        gene1 = parent1[idx1 % len(parent1)]
-        if gene2 not in offspring1:
-            offspring1[idx1 % len(parent1)] = gene2
-        if gene1 not in offspring2:
-            offspring2[idx2 % len(parent2)] = gene1
-        idx1 += 1
-        idx2 += 1
-
-    return offspring1, offspring2
-
-
-def genetic_algorithm(num_generations, pop_size):
-    population = [generate_random_schedule() for _ in range(pop_size)]
-
-    for generation in range(num_generations):
-        # Evaluate fitness of the population
-        fitness_scores = [evaluate_schedule(schedule) for schedule in population]
-
-        # Create new generation through tournament selection, crossover, and mutation
-        new_population = []
-        while len(new_population) < pop_size:
-            # Tournament selection (select two random schedules and pick the best)
-            tournament_size = min(5, len(population))
-            tournament = random.sample(list(enumerate(population)), tournament_size)
-            tournament.sort(key=lambda x: fitness_scores[x[0]])
-            parent1 = tournament[0][1]
-            parent2 = tournament[1][1]
-
-            offspring1, offspring2 = crossover(parent1, parent2)
-
-            # Mutation
-            if random.random() < 0.1:
-                offspring1 = generate_random_schedule()
-            if random.random() < 0.1:
-                offspring2 = generate_random_schedule()
-
-            # Add offspring to the new population
-            new_population.extend([offspring1, offspring2])
-
-        # Sort the population by fitness
-        population_with_fitness = list(zip(population, fitness_scores))
-        population_with_fitness.sort(key=lambda x: x[1])
-        population = [schedule for schedule, _ in population_with_fitness[:pop_size]]
-
-    # Select the best solution as the result
-    best_schedule = min(population, key=evaluate_schedule)
-    return best_schedule, evaluate_schedule(best_schedule)
-
-
 def print_schedule_formatted(schedule):
-    formatted_output = ", ".join(f"({activity.identifier},{start_time})" for activity, start_time in schedule.items())
+    formatted_output = ", ".join(f"({activity.identifier},{start_time})" for activity, start_time in schedule)
     print(formatted_output)
 
 # Example usage
@@ -212,12 +134,18 @@ if __name__ == "__main__":
     # print("Best schedule:", [activity for activity, _, _ in best_schedule])
     # print("Best duration:", best_duration)
 
-    file_path = r"C:\Users\Gia-SanDang\Downloads\Citation\project_instances\instance1.csv"
+    file_path = r"project_instances/instance1.csv"
     activities = create_activities_from_csv(file_path)
 
     sequence = generate_random_activity_sequence(activities)
     print_activity_sequence(sequence)
 
+    predecessors = find_predecessors(activities)
+
     schedule = create_schedule(sequence, 4)
     print_schedule_formatted(schedule)
+
+
+
+
 
