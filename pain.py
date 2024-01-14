@@ -49,69 +49,69 @@ draw_rectangles(ax, rectangles_info)
 plt.show()
 
 
-def crossover(parent1, parent2):
-    # Order-based crossover (OX)
-    # Choose two random crossover points
-    crossover_point1 = random.randint(0, len(parent1) - 1)
-    crossover_point2 = random.randint(crossover_point1 + 1, len(parent1))
-
-    # Create two empty offspring with the same length as the parents
-    offspring1 = [None] * len(parent1)
-    offspring2 = [None] * len(parent1)
-
-    # Copy the genetic material between the crossover points from parent1 to offspring1 and from parent2 to offspring2
-    offspring1[crossover_point1:crossover_point2] = parent1[crossover_point1:crossover_point2]
-    offspring2[crossover_point1:crossover_point2] = parent2[crossover_point1:crossover_point2]
-
-    # Fill in the remaining positions with genetic material from parent2 to offspring1 and from parent1 to offspring2
-    idx2 = crossover_point2
-    idx1 = crossover_point2
-    while None in offspring1:
-        gene2 = parent2[idx2 % len(parent2)]
-        gene1 = parent1[idx1 % len(parent1)]
-        if gene2 not in offspring1:
-            offspring1[idx1 % len(parent1)] = gene2
-        if gene1 not in offspring2:
-            offspring2[idx2 % len(parent2)] = gene1
-        idx1 += 1
-        idx2 += 1
-
-    return offspring1, offspring2
-
-
-def genetic_algorithm(num_generations, pop_size):
-    population = [generate_random_schedule() for _ in range(pop_size)]
-
-    for generation in range(num_generations):
-        # Evaluate fitness of the population
-        fitness_scores = [evaluate_schedule(schedule) for schedule in population]
-
-        # Create new generation through tournament selection, crossover, and mutation
-        new_population = []
-        while len(new_population) < pop_size:
-            # Tournament selection (select two random schedules and pick the best)
-            tournament_size = min(5, len(population))
-            tournament = random.sample(list(enumerate(population)), tournament_size)
-            tournament.sort(key=lambda x: fitness_scores[x[0]])
-            parent1 = tournament[0][1]
-            parent2 = tournament[1][1]
-
-            offspring1, offspring2 = crossover(parent1, parent2)
-
-            # Mutation
-            if random.random() < 0.1:
-                offspring1 = generate_random_schedule()
-            if random.random() < 0.1:
-                offspring2 = generate_random_schedule()
-
-            # Add offspring to the new population
-            new_population.extend([offspring1, offspring2])
-
-        # Sort the population by fitness
-        population_with_fitness = list(zip(population, fitness_scores))
-        population_with_fitness.sort(key=lambda x: x[1])
-        population = [schedule for schedule, _ in population_with_fitness[:pop_size]]
-
-    # Select the best solution as the result
-    best_schedule = min(population, key=evaluate_schedule)
-    return best_schedule, evaluate_schedule(best_schedule)
+# def crossover(parent1, parent2):
+#     # Order-based crossover (OX)
+#     # Choose two random crossover points
+#     crossover_point1 = random.randint(0, len(parent1) - 1)
+#     crossover_point2 = random.randint(crossover_point1 + 1, len(parent1))
+#
+#     # Create two empty offspring with the same length as the parents
+#     offspring1 = [None] * len(parent1)
+#     offspring2 = [None] * len(parent1)
+#
+#     # Copy the genetic material between the crossover points from parent1 to offspring1 and from parent2 to offspring2
+#     offspring1[crossover_point1:crossover_point2] = parent1[crossover_point1:crossover_point2]
+#     offspring2[crossover_point1:crossover_point2] = parent2[crossover_point1:crossover_point2]
+#
+#     # Fill in the remaining positions with genetic material from parent2 to offspring1 and from parent1 to offspring2
+#     idx2 = crossover_point2
+#     idx1 = crossover_point2
+#     while None in offspring1:
+#         gene2 = parent2[idx2 % len(parent2)]
+#         gene1 = parent1[idx1 % len(parent1)]
+#         if gene2 not in offspring1:
+#             offspring1[idx1 % len(parent1)] = gene2
+#         if gene1 not in offspring2:
+#             offspring2[idx2 % len(parent2)] = gene1
+#         idx1 += 1
+#         idx2 += 1
+#
+#     return offspring1, offspring2
+#
+#
+# def genetic_algorithm(num_generations, pop_size):
+#     population = [generate_random_schedule() for _ in range(pop_size)]
+#
+#     for generation in range(num_generations):
+#         # Evaluate fitness of the population
+#         fitness_scores = [evaluate_schedule(schedule) for schedule in population]
+#
+#         # Create new generation through tournament selection, crossover, and mutation
+#         new_population = []
+#         while len(new_population) < pop_size:
+#             # Tournament selection (select two random schedules and pick the best)
+#             tournament_size = min(5, len(population))
+#             tournament = random.sample(list(enumerate(population)), tournament_size)
+#             tournament.sort(key=lambda x: fitness_scores[x[0]])
+#             parent1 = tournament[0][1]
+#             parent2 = tournament[1][1]
+#
+#             offspring1, offspring2 = crossover(parent1, parent2)
+#
+#             # Mutation
+#             if random.random() < 0.1:
+#                 offspring1 = generate_random_schedule()
+#             if random.random() < 0.1:
+#                 offspring2 = generate_random_schedule()
+#
+#             # Add offspring to the new population
+#             new_population.extend([offspring1, offspring2])
+#
+#         # Sort the population by fitness
+#         population_with_fitness = list(zip(population, fitness_scores))
+#         population_with_fitness.sort(key=lambda x: x[1])
+#         population = [schedule for schedule, _ in population_with_fitness[:pop_size]]
+#
+#     # Select the best solution as the result
+#     best_schedule = min(population, key=evaluate_schedule)
+#     return best_schedule, evaluate_schedule(best_schedule)
