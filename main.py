@@ -193,6 +193,31 @@ def draw_rectangles(rectangles_info, total_resource, total_time):
 
     plt.show()
 
+def two_point_crossover(father, mother):
+    # Ensure father and mother schedules are not empty and have the same length
+    if not father or not mother or len(father) != len(mother):
+        raise ValueError("Father and mother schedules must be non-empty and of equal length")
+
+    len_schedule = len(father)
+
+    # Generating random crossover points q1 and q2
+    q1 = random.randint(0, len_schedule - 2)
+    q2 = random.randint(q1 + 1, len_schedule - 1)
+
+    daughter = []
+
+    # Add from mother: 0 to q1
+    daughter.extend(mother[:q1 + 1])
+
+    # Add from father: q1 + 1 to q2, only if not in daughter
+    daughter.extend([act for act in father[q1 + 1: q2 + 1] if act not in daughter])
+
+    # Add from mother: q2 + 1 to end, only if not in daughter
+    daughter.extend([act for act in mother[q2 + 1:] if act not in daughter])
+
+    print(q1, q2)
+
+    return daughter
 
 # Example usage
 if __name__ == "__main__":
@@ -205,12 +230,18 @@ if __name__ == "__main__":
     file_path = r"project_instances/instance3.csv"
     activities = create_activities_from_csv(file_path)
 
-    random_sequence = generate_random_activity_sequence(activities)
-    print_activity_sequence(random_sequence)
+    father = generate_random_activity_sequence(activities)
+    mother = generate_random_activity_sequence(activities)
+    daughter = two_point_crossover(father, mother)
+    print_activity_sequence(father)
+    print_activity_sequence(mother)
+    print_activity_sequence(daughter)
 
-    schedule = create_schedule(random_sequence, 6)
-    print_schedule_formatted(schedule)
-    draw_schedule(schedule, 6)
+
+
+    # schedule = create_schedule(random_sequence, 6)
+    # print_schedule_formatted(schedule)
+    # draw_schedule(schedule, 6)
 
     # sequence = generate_activity_sequence(activities, [1,2,4,5,3,6,9,7,8,10,11])
     # print_activity_sequence(sequence)
