@@ -176,30 +176,40 @@ def draw_schedule(schedule, total_resources):
         for act, start_time, resource_level in scheduled:
             for t in range(act.time):
                 for r in range(act.resources):
-                    temp[start_time + t][resource_level + r] = 1
+                    temp[start_time + t][resource_level + r] += 1
         return temp
 
+    def colision_point(resource_grid):
+        for t in range(len(resource_grid)):
+            for r in range(len(resource_grid[0])):
+                if resource_grid[t][r] > 1:
+                    return t
+        return 0
+
     # Process each activity in the schedule
-    rectangles_info = []
     scheduled = []
     for activity, start_time in schedule:
-        resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
-        if resource_level is not None:
-            scheduled.append((activity, start_time, resource_level))
-            resource_grid = update_resource_grid(scheduled)
-            # draw_rectangles(scheduled, total_resources, total_time)
-        else:
+        while find_space_for_activity(activity.time, activity.resources, start_time) is None:
             item = colision_activity(scheduled, activity, start_time)
             scheduled.remove(item)
             scheduled.append((item[0], item[1], total_resources - item[0].resources))
             resource_grid = update_resource_grid(scheduled)
+            point = colision_point(resource_grid)
+            if point > 0:
+                for act, start, level in scheduled:
+                    if start == point:
+                        scheduled.remove((act, start, level))
+                        temp = find_space_for_activity(act.time, act.resources, start)
+                        scheduled.append((act, start, temp))
             # draw_rectangles(scheduled, total_resources, total_time)
-            resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
-            rectangles_info.append((start_time, resource_level, activity.time, activity.resources, activity.identifier))
-            scheduled.append((activity, start_time, resource_level))
             resource_grid = update_resource_grid(scheduled)
-            # draw_rectangles(scheduled, total_resources, total_time)
-    draw_rectangles(scheduled, total_resources, total_time) 
+
+        resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
+        scheduled.append((activity, start_time, resource_level))
+        resource_grid = update_resource_grid(scheduled)
+        # draw_rectangles(scheduled, total_resources, total_time)
+
+    draw_rectangles(scheduled, total_resources, total_time)
 
 def draw_rectangles(schedule, total_resource, total_time):
     """
@@ -266,6 +276,25 @@ def two_point_crossover(father, mother):
 
     return daughter
 
+def mutate_individual(individual, pmutation, predecessors):
+    mutated_individual = individual.copy()
+
+    for i in range(len(individual) - 1):
+        # Check if mutation should occur
+        if random.random() < pmutation:
+            # Swap activities jIi and jIi+1 if it doesn't violate the precedence assumption
+            if is_valid_swap(mutated_individual, i, i + 1, predecessors):
+                mutated_individual[i], mutated_individual[i + 1] = mutated_individual[i + 1], mutated_individual[i]
+
+    return mutated_individual
+
+def is_valid_swap(individual, i, j, predecessors):
+    if individual[i] in predecessors[individual[j]]:
+        return False
+    if individual[j] in individual[i].successors:
+        return False
+    return True
+
 # Example usage
 if __name__ == "__main__":
     # num_generations = 100
@@ -285,7 +314,7 @@ if __name__ == "__main__":
 
 
     # Test a particular activity list
-    # sequence = generate_activity_sequence(activities, [1,2,4,5,8,3,6,10,7,9,11])
+    # sequence = generate_activity_sequence(activities, [1,2,5,4,7,3,6,9,8,10,11])
     # print_activity_sequence(sequence)
     # schedule = create_schedule(sequence, 6)
     # print_schedule_formatted(schedule)
@@ -300,5 +329,14 @@ if __name__ == "__main__":
 
     daughter = two_point_crossover(father, mother)
     print_activity_sequence(daughter)
-    schedule = create_schedule(daughter, 6)
-    draw_schedule(schedule, 6)
+    daughter_schedule = create_schedule(daughter, 6)
+    print_schedule_formatted(daughter_schedule)
+    draw_schedule(daughter_schedule, 6)
+
+    # Test mutation function
+    mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
+    print_activity_sequence(mutated)
+    mutated_schedule = create_schedule(mutated, 6)
+    print_schedule_formatted(mutated_schedule)
+    draw_schedule(mutated_schedule, 6)
+
