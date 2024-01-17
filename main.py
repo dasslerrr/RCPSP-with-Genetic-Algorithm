@@ -84,6 +84,7 @@ def create_schedule(activity_sequence, total_resources):
     predecessors = find_predecessors(activity_sequence)
     scheduled = []
     finish_time = [0]
+    resource = []
 
     for activity in activity_sequence:
         finish_time.sort()
@@ -93,8 +94,18 @@ def create_schedule(activity_sequence, total_resources):
                     scheduled.append((activity, current_time))
                     finish_time.append(current_time + activity.time)
                     break
-
+        finish_time = optimize_finish_time(scheduled, finish_time, total_resources)
     return scheduled
+
+def optimize_finish_time(scheduled, finish_time, total_resource):
+    for time in finish_time:
+        resource = 0
+        for act_tuple in scheduled:
+            if act_tuple[1] <= time < act_tuple[1] + act_tuple[0].time:
+                resource += act_tuple[0].resources
+        if resource == total_resource:
+            finish_time.remove(time)
+    return finish_time
 
 def is_resource_feasible(scheduled, time, activity, total_resource):
     end_time = time + activity.time
@@ -133,6 +144,8 @@ def print_schedule_formatted(schedule):
     print("Schedule: " + formatted_output)
 
 def draw_schedule(schedule, total_resources):
+    schedule.sort(key=lambda x: (x[1], -x[0].time))
+
     # Initialize the 2D array for resource tracking
     resource_grid = [[0 for _ in range(total_resources)] for _ in
                      range(max(schedule, key=lambda x: x[1])[1] + max(schedule, key=lambda x: x[0].time)[0].time)]
@@ -140,30 +153,55 @@ def draw_schedule(schedule, total_resources):
     total_time = schedule[-1][1] + schedule[-1][0].time
     # Function to find space for an activity
     def find_space_for_activity(activity_duration, activity_resources, schedule_start_time):
-        for start_time in range(schedule_start_time, len(resource_grid) - activity_duration + 1):
-            for resource_level in range(total_resources - activity_resources + 1):
-                if all(resource_grid[start_time + t][resource_level + r] == 0 for t in range(activity_duration) for r in
-                       range(activity_resources)):
-                    return start_time, resource_level
-        return None, None
+        for resource_level in range(total_resources - activity_resources + 1):
+            if all(resource_grid[schedule_start_time + t][resource_level + r] == 0 for t in range(activity_duration) for r in
+                   range(activity_resources)):
+                return resource_level
+        return None
 
+    def colision_activity(scheduled, activity, start_time):
+        for activity_2, start_time_2, level in reversed(scheduled):
+            activity1_end_time = start_time + activity.time
+            activity2_end_time = start_time_2 + activity_2.time
+
+            overlap = (start_time < activity2_end_time and activity1_end_time > start_time_2) or \
+                      (start_time_2 < activity1_end_time and activity2_end_time > start_time)
+
+            if overlap:
+                return (activity_2, start_time_2, level)
     # Function to update the resource grid
-    def update_resource_grid(start_time, resource_level, duration, resources):
-        for t in range(duration):
-            for r in range(resources):
-                resource_grid[start_time + t][resource_level + r] = 1
+    def update_resource_grid(scheduled):
+        temp = [[0 for _ in range(total_resources)] for _ in
+                     range(max(schedule, key=lambda x: x[1])[1] + max(schedule, key=lambda x: x[0].time)[0].time)]
+        for act, start_time, resource_level in scheduled:
+            for t in range(act.time):
+                for r in range(act.resources):
+                    temp[start_time + t][resource_level + r] = 1
+        return temp
 
     # Process each activity in the schedule
     rectangles_info = []
+    scheduled = []
     for activity, start_time in schedule:
-        start_time, resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
-        if start_time is not None and resource_level is not None:
+        resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
+        if resource_level is not None:
+            scheduled.append((activity, start_time, resource_level))
+            resource_grid = update_resource_grid(scheduled)
+            # draw_rectangles(scheduled, total_resources, total_time)
+        else:
+            item = colision_activity(scheduled, activity, start_time)
+            scheduled.remove(item)
+            scheduled.append((item[0], item[1], total_resources - item[0].resources))
+            resource_grid = update_resource_grid(scheduled)
+            # draw_rectangles(scheduled, total_resources, total_time)
+            resource_level = find_space_for_activity(activity.time, activity.resources, start_time)
             rectangles_info.append((start_time, resource_level, activity.time, activity.resources, activity.identifier))
-            update_resource_grid(start_time, resource_level, activity.time, activity.resources)
-            draw_rectangles(rectangles_info, total_resources, total_time)
-    return rectangles_info
+            scheduled.append((activity, start_time, resource_level))
+            resource_grid = update_resource_grid(scheduled)
+            # draw_rectangles(scheduled, total_resources, total_time)
+    draw_rectangles(scheduled, total_resources, total_time) 
 
-def draw_rectangles(rectangles_info, total_resource, total_time):
+def draw_rectangles(schedule, total_resource, total_time):
     """
     Draw multiple rectangles on the given axes.
 
@@ -184,8 +222,13 @@ def draw_rectangles(rectangles_info, total_resource, total_time):
     # Draw a horizontal line to represent the maximum resource level
     ax.hlines(total_resource, 0, total_time + 2, colors='black', linestyles='dotted', lw=2)
 
-    for (x, y, width, height, text) in rectangles_info:
+    for (act, start_time, start_resource) in schedule:
         # Draw the rectangle
+        x = start_time
+        y = start_resource
+        width = act.time
+        height = act.resources
+        text = act.identifier
         rect = plt.Rectangle((x, y), width, height, linewidth=1, edgecolor='black', facecolor='none')
         ax.add_patch(rect)
         # Place the text in the center of the rectangle
@@ -206,16 +249,20 @@ def two_point_crossover(father, mother):
 
     daughter = []
 
-    # Add from mother: 0 to q1
-    daughter.extend(mother[:q1 + 1])
+    # Add first q1 elements from mother
+    daughter.extend(mother[:q1])
 
-    # Add from father: q1 + 1 to q2, only if not in daughter
-    daughter.extend([act for act in father[q1 + 1: q2 + 1] if act not in daughter])
+    # Add elements from father, checking from beginning to end
+    for act in father:
+        if act not in daughter and len(daughter) < q2:
+            daughter.append(act)
 
-    # Add from mother: q2 + 1 to end, only if not in daughter
-    daughter.extend([act for act in mother[q2 + 1:] if act not in daughter])
+    # Add remaining elements from mother, checking from beginning to end
+    for act in mother:
+        if act not in daughter and len(daughter) < len_schedule:
+            daughter.append(act)
 
-    print(q1, q2)
+    print(q1,q2)
 
     return daughter
 
@@ -227,25 +274,31 @@ if __name__ == "__main__":
     # print("Best schedule:", [activity for activity, _, _ in best_schedule])
     # print("Best duration:", best_duration)
 
+    # Create activity from csv
     file_path = r"project_instances/instance3.csv"
     activities = create_activities_from_csv(file_path)
 
-    father = generate_random_activity_sequence(activities)
-    mother = generate_random_activity_sequence(activities)
-    daughter = two_point_crossover(father, mother)
-    print_activity_sequence(father)
-    print_activity_sequence(mother)
-    print_activity_sequence(daughter)
-
-
-
+    # Test a random schedule
     # schedule = create_schedule(random_sequence, 6)
     # print_schedule_formatted(schedule)
     # draw_schedule(schedule, 6)
 
-    # sequence = generate_activity_sequence(activities, [1,2,4,5,3,6,9,7,8,10,11])
+
+    # Test a particular activity list
+    # sequence = generate_activity_sequence(activities, [1,2,4,5,8,3,6,10,7,9,11])
     # print_activity_sequence(sequence)
     # schedule = create_schedule(sequence, 6)
     # print_schedule_formatted(schedule)
+    # draw_schedule(schedule, 6)
 
+    # Test cross_over_function
+    father = generate_random_activity_sequence(activities)
+    mother = generate_random_activity_sequence(activities)
 
+    print_activity_sequence(father)
+    print_activity_sequence(mother)
+
+    daughter = two_point_crossover(father, mother)
+    print_activity_sequence(daughter)
+    schedule = create_schedule(daughter, 6)
+    draw_schedule(schedule, 6)
