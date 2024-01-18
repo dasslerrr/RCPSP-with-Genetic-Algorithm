@@ -280,8 +280,6 @@ def two_point_crossover(father, mother):
         if act not in son and len(son) < len_schedule:
             son.append(act)
 
-    print (q1,q2)
-
     return son, daughter
 
 def mutate_individual(individual, pmutation, predecessors):
@@ -303,6 +301,59 @@ def is_valid_swap(individual, i, j, predecessors):
         return False
     return True
 
+def ranking_selection(population):
+    # Sort the population based on fitness (assuming fitness is the second element of the tuple)
+    sorted_population = sorted(population, key=lambda x: x[1])
+
+    # Cut half of the population
+    half_population_size = len(sorted_population) // 2
+    selected_population = sorted_population[:half_population_size]
+
+    return selected_population
+
+def fitness_evaluation(schedule):
+    max = 0
+    for act, start_time in schedule:
+        if max < start_time + act.time:
+            max = start_time + act.time
+    return max
+
+def genetic_algorithm(activities, total_resource):
+    pop = []
+    pop_length = 40
+    gene_num = 25
+    predecessors = find_predecessors(activities)
+
+    #Generate initial population
+    for i in range(0, pop_length):
+        sequence = generate_random_activity_sequence(activities)
+        schedule = create_schedule(sequence, total_resource)
+        total_time = fitness_evaluation(schedule)
+        pop.append((sequence, total_time))
+
+    #
+    for i in range(0, gene_num):
+        random.shuffle(pop)
+        pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
+        for pair in pairs:
+            son, daughter = two_point_crossover(pair[0][0], pair[1][0])
+            son = mutate_individual(son, 0.05, predecessors)
+            daughter = mutate_individual(daughter, 0.05, predecessors)
+            son_schedule = create_schedule(son, total_resource)
+            daughter_schedule = create_schedule(daughter, total_resource)
+            son_time = fitness_evaluation(son_schedule)
+            daughter_time = fitness_evaluation(daughter_schedule)
+            pop.append((son, son_time))
+            pop.append((daughter, daughter_time))
+        pop = ranking_selection(pop)
+
+    for individual in pop[:5]:
+        print_activity_sequence(individual[0])
+        schedule = create_schedule(individual[0], total_resource)
+        print_schedule_formatted(schedule)
+        print(individual[1])
+        draw_schedule(schedule, total_resource)
+
 # Example usage
 if __name__ == "__main__":
     # num_generations = 100
@@ -312,7 +363,7 @@ if __name__ == "__main__":
     # print("Best duration:", best_duration)
 
     # Create activity from csv
-    file_path = r"project_instances/instance3.csv"
+    file_path = r"project_instances/instance1.csv"
     activities = create_activities_from_csv(file_path)
 
     # Test a random schedule
@@ -329,22 +380,22 @@ if __name__ == "__main__":
     # draw_schedule(schedule, 6)
 
     # Test cross_over_function
-    father = generate_random_activity_sequence(activities)
-    mother = generate_random_activity_sequence(activities)
-
-    print_activity_sequence(father)
-    print_activity_sequence(mother)
-
-    daughter, son = two_point_crossover(father, mother)
-    print_activity_sequence(daughter)
-    daughter_schedule = create_schedule(daughter, 6)
-    print_schedule_formatted(daughter_schedule)
-    draw_schedule(daughter_schedule, 6)
-
-    print_activity_sequence(son)
-    son_schedule = create_schedule(son, 6)
-    print_schedule_formatted(son_schedule)
-    draw_schedule(son_schedule, 6)
+    # father = generate_random_activity_sequence(activities)
+    # mother = generate_random_activity_sequence(activities)
+    #
+    # print_activity_sequence(father)
+    # print_activity_sequence(mother)
+    #
+    # son, daughter = two_point_crossover(father, mother)
+    # print_activity_sequence(daughter)
+    # daughter_schedule = create_schedule(daughter, 6)
+    # print_schedule_formatted(daughter_schedule)
+    # draw_schedule(daughter_schedule, 6)
+    #
+    # print_activity_sequence(son)
+    # son_schedule = create_schedule(son, 6)
+    # print_schedule_formatted(son_schedule)
+    # draw_schedule(son_schedule, 6)
 
     # Test mutation function
     # mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
@@ -353,3 +404,4 @@ if __name__ == "__main__":
     # print_schedule_formatted(mutated_schedule)
     # draw_schedule(mutated_schedule, 6)
 
+    genetic_algorithm(activities, 4)
