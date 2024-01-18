@@ -258,9 +258,11 @@ def two_point_crossover(father, mother):
     q2 = random.randint(q1 + 1, len_schedule - 1)
 
     daughter = []
+    son = []
 
     # Add first q1 elements from mother
     daughter.extend(mother[:q1])
+    son.extend(father[:q1])
 
     # Add elements from father, checking from beginning to end
     for act in father:
@@ -271,10 +273,16 @@ def two_point_crossover(father, mother):
     for act in mother:
         if act not in daughter and len(daughter) < len_schedule:
             daughter.append(act)
+        if act not in son and len(son) < q2:
+            son.append(act)
 
-    print(q1,q2)
+    for act in father:
+        if act not in son and len(son) < len_schedule:
+            son.append(act)
 
-    return daughter
+    print (q1,q2)
+
+    return son, daughter
 
 def mutate_individual(individual, pmutation, predecessors):
     mutated_individual = individual.copy()
@@ -327,16 +335,21 @@ if __name__ == "__main__":
     print_activity_sequence(father)
     print_activity_sequence(mother)
 
-    daughter = two_point_crossover(father, mother)
+    daughter, son = two_point_crossover(father, mother)
     print_activity_sequence(daughter)
     daughter_schedule = create_schedule(daughter, 6)
     print_schedule_formatted(daughter_schedule)
     draw_schedule(daughter_schedule, 6)
 
+    print_activity_sequence(son)
+    son_schedule = create_schedule(son, 6)
+    print_schedule_formatted(son_schedule)
+    draw_schedule(son_schedule, 6)
+
     # Test mutation function
-    mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
-    print_activity_sequence(mutated)
-    mutated_schedule = create_schedule(mutated, 6)
-    print_schedule_formatted(mutated_schedule)
-    draw_schedule(mutated_schedule, 6)
+    # mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
+    # print_activity_sequence(mutated)
+    # mutated_schedule = create_schedule(mutated, 6)
+    # print_schedule_formatted(mutated_schedule)
+    # draw_schedule(mutated_schedule, 6)
 
