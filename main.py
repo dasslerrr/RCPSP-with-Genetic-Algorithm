@@ -37,12 +37,12 @@ def create_activities_from_csv(file_path):
 
     return list(activities.values())
 
-
 def find_predecessors(activities):
     predecessors = {activity: set() for activity in activities}
     for activity in activities:
         for succ in activity.successors:
-            predecessors[succ].add(activity)
+            if succ in activities:
+                predecessors[succ].add(activity)
     return predecessors
 
 def generate_activity_sequence(activities, activity_list):
@@ -72,6 +72,13 @@ def generate_random_activity_sequence(activities):
         available.remove(next_activity)
 
     return sequence
+
+def remove_activity_by_identifier(activities, identifier):
+    temp = activities.copy()
+    for act in temp:
+        if act.identifier == identifier:
+            temp.remove(act)
+            return temp
 
 def create_schedule(activity_sequence, total_resources):
     """
@@ -356,15 +363,13 @@ def genetic_algorithm(activities, total_resource):
 
 # Example usage
 if __name__ == "__main__":
-    # num_generations = 100
-    # pop_size = 50
-    # best_schedule, best_duration = genetic_algorithm(num_generations, pop_size)
-    # print("Best schedule:", [activity for activity, _, _ in best_schedule])
-    # print("Best duration:", best_duration)
 
     # Create activity from csv
-    file_path = r"project_instances/instance1.csv"
+    file_path = r"project_instances/instance6.csv"
     activities = create_activities_from_csv(file_path)
+
+    instance_1 = remove_activity_by_identifier(activities, '41')
+    instance_2 = remove_activity_by_identifier(activities, '4')
 
     # Test a random schedule
     # schedule = create_schedule(random_sequence, 6)
@@ -373,11 +378,17 @@ if __name__ == "__main__":
 
 
     # Test a particular activity list
-    # sequence = generate_activity_sequence(activities, [1,2,5,4,7,3,6,9,8,10,11])
-    # print_activity_sequence(sequence)
-    # schedule = create_schedule(sequence, 6)
-    # print_schedule_formatted(schedule)
-    # draw_schedule(schedule, 6)
+    sequence = generate_activity_sequence(instance_1, [1,2,5,4,7,3,6,9,8,10,11])
+    print_activity_sequence(sequence)
+    schedule = create_schedule(sequence, 6)
+    print_schedule_formatted(schedule)
+    draw_schedule(schedule, 6)
+
+    sequence = generate_activity_sequence(instance_2, [1, 2, 5, 41, 7, 3, 6, 9, 8, 10, 11])
+    print_activity_sequence(sequence)
+    schedule = create_schedule(sequence, 6)
+    print_schedule_formatted(schedule)
+    draw_schedule(schedule, 6)
 
     # Test cross_over_function
     # father = generate_random_activity_sequence(activities)
@@ -404,4 +415,4 @@ if __name__ == "__main__":
     # print_schedule_formatted(mutated_schedule)
     # draw_schedule(mutated_schedule, 6)
 
-    genetic_algorithm(activities, 4)
+    # genetic_algorithm(activities, 6)
