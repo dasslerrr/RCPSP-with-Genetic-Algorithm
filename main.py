@@ -15,27 +15,56 @@ class Activity:
     def __repr__(self):
         return self.__str__()
 
+
+import csv
+
+
 def create_activities_from_csv(file_path):
     activities = {}
-    with open(file_path, mode='r', newline='', encoding='utf-8-sig') as file:  # Using utf-8-sig to handle BOM
-        reader = csv.DictReader(file)
-        # First pass: create all activities with empty successors
-        for row in reader:
-            job_number = row['jobnr'].strip()
-            resources = int(row['resource'].strip())
-            time = int(row['time'].strip())
+    total_resource = 0
+    alternative_chains = []
+
+    with open(file_path, mode='r', newline='', encoding='utf-8-sig') as file:
+        # Use csv.reader to handle rows uniformly
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            # Check if the row is total_resource or alternative_chain
+            if row[0].lower() == 'total_resource':
+                total_resource = int(row[1])
+            elif row[0].lower() == 'alternative_chain':
+                break  # Exit loop after total_resource
+
+        for row in csv_reader:  # Continue reading for alternative_chain
+            if row[0] == '---':  # Check for delimiter row
+                break
+            else:
+                # Process and add the alternative pairs
+                pair = eval(row[1])
+                alternative_chains.append((str(pair[0]), str(pair[1])))
+
+        for row in csv_reader:  # Continue reading for job details
+            if row[0].lower() == 'jobnr':  # Skip header row
+                continue
+            job_number = row[0].strip()
+            resources = int(row[1].strip())
+            time = int(row[2].strip())
             activities[job_number] = Activity(job_number, resources, time)
 
-    # Second pass: update the successors
+    # Second pass for successors, re-open file to avoid resetting csv_reader
     with open(file_path, mode='r', newline='', encoding='utf-8-sig') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            job_number = row['jobnr'].strip()
-            # Convert the string representation of the set to an actual set and then to a list
-            successor_ids = eval(row['successors'].strip())
-            activities[job_number].successors = [activities[str(succ)] for succ in successor_ids if str(succ) in activities]
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            if row[0].lower() == 'jobnr':  # Find the start of the job details
+                break
 
-    return list(activities.values())
+        for row in csv_reader:
+            job_number = row[0].strip()
+            if job_number in activities:  # Check if job_number exists in activities
+                successor_ids = eval(row[3].strip())
+                activities[job_number].successors = [activities[str(succ)] for succ in successor_ids if str(succ) in activities]
+
+    return total_resource, list(activities.values()), alternative_chains
+
 
 def find_predecessors(activities):
     predecessors = {activity: set() for activity in activities}
@@ -91,7 +120,6 @@ def create_schedule(activity_sequence, total_resources):
     predecessors = find_predecessors(activity_sequence)
     scheduled = []
     finish_time = [0]
-    resource = []
 
     for activity in activity_sequence:
         finish_time.sort()
@@ -142,9 +170,6 @@ def is_precedence_feasible(scheduled, time, activity, predecessors):
 def print_activity_sequence(sequence):
     identifier_sequence = [activity.identifier for activity in sequence]
     print("Activity Sequence:", ' -> '.join(identifier_sequence))
-
-def evaluate_schedule(schedule) -> int:
-    return schedule[-1]
 
 def print_schedule_formatted(schedule):
     formatted_output = ", ".join(f"({activity.identifier},{start_time})" for activity, start_time in schedule)
@@ -361,12 +386,23 @@ def genetic_algorithm(activities, total_resource):
         print(individual[1])
         draw_schedule(schedule, total_resource)
 
+def replace_activity(activity_sequence, identifier, activity):
+    temp = [activity if act.identifier == identifier else act for act in activity_sequence]
+    return temp
+
+def create_alternative_sequence(activities, activity_sequence, identifier, alternative_chain):
+    for chain in alternative_chain:
+        if identifier == chain[0]:
+            for act in activities:
+                if act.identifier == chain[1]:
+                    return replace_activity(activity_sequence, identifier, act)
+
 # Example usage
 if __name__ == "__main__":
 
     # Create activity from csv
     file_path = r"project_instances/instance6.csv"
-    activities = create_activities_from_csv(file_path)
+    total_resource, activities, alternative_chain = create_activities_from_csv(file_path)
 
     instance_1 = remove_activity_by_identifier(activities, '41')
     instance_2 = remove_activity_by_identifier(activities, '4')
@@ -378,17 +414,17 @@ if __name__ == "__main__":
 
 
     # Test a particular activity list
-    sequence = generate_activity_sequence(instance_1, [1,2,5,4,7,3,6,9,8,10,11])
+    sequence = generate_random_activity_sequence(instance_1)
     print_activity_sequence(sequence)
     schedule = create_schedule(sequence, 6)
     print_schedule_formatted(schedule)
     draw_schedule(schedule, 6)
 
-    sequence = generate_activity_sequence(instance_2, [1, 2, 5, 41, 7, 3, 6, 9, 8, 10, 11])
-    print_activity_sequence(sequence)
-    schedule = create_schedule(sequence, 6)
-    print_schedule_formatted(schedule)
-    draw_schedule(schedule, 6)
+    alternative_sequence = create_alternative_sequence(activities, sequence, '4', alternative_chain)
+    print_activity_sequence(alternative_sequence)
+    alternative_schedule = create_schedule(alternative_sequence, total_resource)
+    print_schedule_formatted(alternative_schedule)
+    draw_schedule(alternative_schedule, total_resource)
 
     # Test cross_over_function
     # father = generate_random_activity_sequence(activities)
@@ -415,4 +451,5 @@ if __name__ == "__main__":
     # print_schedule_formatted(mutated_schedule)
     # draw_schedule(mutated_schedule, 6)
 
-    # genetic_algorithm(activities, 6)
+    # genetic_algorithm(instance_1, 6)
+    # genetic_algorithm(instance_2, 6)
