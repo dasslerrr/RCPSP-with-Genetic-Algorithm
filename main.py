@@ -1,4 +1,5 @@
 import csv
+import itertools
 import random
 import matplotlib.pyplot as plt
 
@@ -64,7 +65,6 @@ def create_activities_from_csv(file_path):
                 activities[job_number].successors = [activities[str(succ)] for succ in successor_ids if str(succ) in activities]
 
     return total_resource, list(activities.values()), alternative_chains
-
 
 def find_predecessors(activities):
     predecessors = {activity: set() for activity in activities}
@@ -343,7 +343,7 @@ def ranking_selection(population):
 
     return selected_population
 
-def fitness_evaluation(schedule):
+def evaluate_finish_time(schedule):
     max = 0
     for act, start_time in schedule:
         if max < start_time + act.time:
@@ -360,7 +360,7 @@ def genetic_algorithm(activities, total_resource):
     for i in range(0, pop_length):
         sequence = generate_random_activity_sequence(activities)
         schedule = create_schedule(sequence, total_resource)
-        total_time = fitness_evaluation(schedule)
+        total_time = evaluate_finish_time(schedule)
         pop.append((sequence, total_time))
 
     #
@@ -373,13 +373,13 @@ def genetic_algorithm(activities, total_resource):
             daughter = mutate_individual(daughter, 0.05, predecessors)
             son_schedule = create_schedule(son, total_resource)
             daughter_schedule = create_schedule(daughter, total_resource)
-            son_time = fitness_evaluation(son_schedule)
-            daughter_time = fitness_evaluation(daughter_schedule)
+            son_time = evaluate_finish_time(son_schedule)
+            daughter_time = evaluate_finish_time(daughter_schedule)
             pop.append((son, son_time))
             pop.append((daughter, daughter_time))
         pop = ranking_selection(pop)
 
-    for individual in pop[:5]:
+    for individual in pop[:1]:
         print_activity_sequence(individual[0])
         schedule = create_schedule(individual[0], total_resource)
         print_schedule_formatted(schedule)
@@ -390,42 +390,116 @@ def replace_activity(activity_sequence, identifier, activity):
     temp = [activity if act.identifier == identifier else act for act in activity_sequence]
     return temp
 
-def create_alternative_sequence(activities, activity_sequence, identifier, alternative_chain):
-    for chain in alternative_chain:
-        if identifier == chain[0]:
-            for act in activities:
-                if act.identifier == chain[1]:
-                    return replace_activity(activity_sequence, identifier, act)
+def find_alternatives_for_activity(identifier, alternative_chains):
+    alternatives = []
+    for chain in alternative_chains:
+        if identifier in chain:
+            alternatives.extend(chain)
+    # Remove duplicates and the original identifier
+    return list(set(alternatives) - {identifier})
+
+def create_alternative_sequences(activities, activity_sequence, alternative_chains):
+    all_sequences = [activity_sequence]
+
+    for act in activity_sequence:
+        alternatives = find_alternatives_for_activity(act.identifier, alternative_chains)
+        new_sequences = []
+        for alt_id in alternatives:
+            for sequence in all_sequences:
+                new_act = next((a for a in activities if a.identifier == alt_id), None)
+                if new_act:
+                    new_sequences.append(replace_activity(sequence, act.identifier, new_act))
+        all_sequences.extend(new_sequences)
+
+    return all_sequences
+
+def generate_full_enumeration(activities, alternative_chains):
+    # Extract activities not in any alternative chain
+    regular_activities = [act for act in activities if
+                          not any(act.identifier in chain for chain in alternative_chains)]
+
+    # Extract activities that are part of alternative chains
+    alternative_activities = []
+    for chain in alternative_chains:
+        chain_activities = [act for act in activities if act.identifier in chain]
+        alternative_activities.append(chain_activities)
+
+    # Generate all combinations, taking one from each alternative chain
+    all_combinations = []
+    for combination in itertools.product(*alternative_activities):
+        # Combine alternative chain activities with regular activities
+        full_combination = list(combination) + regular_activities
+        all_combinations.append(full_combination)
+
+    return all_combinations
 
 # Example usage
 if __name__ == "__main__":
 
     # Create activity from csv
     file_path = r"project_instances/instance6.csv"
-    total_resource, activities, alternative_chain = create_activities_from_csv(file_path)
+    total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
 
-    instance_1 = remove_activity_by_identifier(activities, '41')
-    instance_2 = remove_activity_by_identifier(activities, '4')
+    instances = generate_full_enumeration(activities, alternative_chains)
 
-    # Test a random schedule
-    # schedule = create_schedule(random_sequence, 6)
-    # print_schedule_formatted(schedule)
-    # draw_schedule(schedule, 6)
+    # for instance in instances:
+    #     genetic_algorithm(instance, total_resource)
 
 
-    # Test a particular activity list
-    sequence = generate_random_activity_sequence(instance_1)
-    print_activity_sequence(sequence)
-    schedule = create_schedule(sequence, 6)
-    print_schedule_formatted(schedule)
-    draw_schedule(schedule, 6)
+    instance_1 = instances[0]
 
-    alternative_sequence = create_alternative_sequence(activities, sequence, '4', alternative_chain)
-    print_activity_sequence(alternative_sequence)
-    alternative_schedule = create_schedule(alternative_sequence, total_resource)
-    print_schedule_formatted(alternative_schedule)
-    draw_schedule(alternative_schedule, total_resource)
+    # Test a random activity list
+    original_sequence = generate_random_activity_sequence(instance_1)
 
+    # Create all possible alternative sequences
+    alternative_sequences = create_alternative_sequences(activities, original_sequence, alternative_chains)
+    alternative_schedules = []
+    for sequence in alternative_sequences:
+        print_activity_sequence(sequence)
+        schedule = create_schedule(sequence, total_resource)
+        print_schedule_formatted(schedule)
+        alternative_schedules.append((sequence, schedule))
+        draw_schedule(schedule, total_resource)
+
+    first_sequence = alternative_schedules[0][0]
+    first_schedule = alternative_schedules[0][1]
+    robust = []
+    robust.append((first_sequence, evaluate_finish_time(first_schedule), 0))
+    for sequence, schedule in alternative_schedules[1:]:
+        slacks = 0
+        for i in range(0, len(schedule)):
+            slacks += schedule[i][1] + schedule[i][0].time - first_schedule[i][1] - first_schedule[i][0].time
+        robust.append((sequence, evaluate_finish_time(schedule), slacks))
+
+    robust = sorted(robust, key=lambda x: x[2])
+    # for item in robust:
+    #     print_activity_sequence(item[0])
+    #     print(item[1])
+    #     print(item[2])
+
+    ranked_tuples = []
+    current_rank = 1
+    previous_value = None
+    same_rank_counter = 0
+
+    for tup in robust:
+        # Check if the current value is the same as the previous one
+        if previous_value is not None and tup[2] == previous_value:
+            # If it's the same, assign the same rank
+            ranked_tuples.append((tup, current_rank))
+            same_rank_counter += 1
+        else:
+            # If it's different, update the rank and assign
+            current_rank += same_rank_counter
+            same_rank_counter = 1  # Reset counter
+            ranked_tuples.append((tup, current_rank))
+            previous_value = tup[2]
+
+    for tup in ranked_tuples:
+        print_activity_sequence(tup[0][0])
+        print(tup[0][1])
+        print(tup[0][2])
+        print(tup[1])
     # Test cross_over_function
     # father = generate_random_activity_sequence(activities)
     # mother = generate_random_activity_sequence(activities)
