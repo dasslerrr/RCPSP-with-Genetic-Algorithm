@@ -1,6 +1,7 @@
 import csv
 import itertools
 import random
+
 import matplotlib.pyplot as plt
 
 class Activity:
@@ -18,7 +19,6 @@ class Activity:
 
 
 import csv
-
 
 def create_activities_from_csv(file_path):
     activities = {}
@@ -41,12 +41,13 @@ def create_activities_from_csv(file_path):
             else:
                 # Process and add the alternative pairs
                 pair = eval(row[1])
+                pair = (str(pair[0]).strip("'"), str(pair[1]).strip("'"))
                 alternative_chains.append((str(pair[0]), str(pair[1])))
 
         for row in csv_reader:  # Continue reading for job details
             if row[0].lower() == 'jobnr':  # Skip header row
                 continue
-            job_number = row[0].strip()
+            job_number = row[0].strip("'")
             resources = int(row[1].strip())
             time = int(row[2].strip())
             activities[job_number] = Activity(job_number, resources, time)
@@ -59,9 +60,10 @@ def create_activities_from_csv(file_path):
                 break
 
         for row in csv_reader:
-            job_number = row[0].strip()
+            job_number = row[0].strip("'")
             if job_number in activities:  # Check if job_number exists in activities
                 successor_ids = eval(row[3].strip())
+                successor_ids = tuple(element.strip("'") if isinstance(element, str) else element for element in successor_ids)
                 activities[job_number].successors = [activities[str(succ)] for succ in successor_ids if str(succ) in activities]
 
     return total_resource, list(activities.values()), alternative_chains
@@ -251,7 +253,7 @@ def draw_rectangles(schedule, total_resource, total_time):
     :param rectangles_info: List of tuples, where each tuple contains:
                             (x, y, width, height, 'text')
     """
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(10, 5))
 
     # Set the limits and labels of the axes
     ax.set_xlim(0, total_time + 2)
@@ -496,29 +498,29 @@ if __name__ == "__main__":
     instances = generate_full_enumeration(activities, alternative_chains)
     sequence_pool = []
 
+    # Test for all instances
+
+    # for instance in instances:
+    #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
 
     # Test for only one instance
 
-    # instance_1 = instances[0]
+    instance_1 = instances[0]
     # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
 
-    # Test for all instances
-    for instance in instances:
-        genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-
     # Test a random activity list and its all alternative sequences
-    # random_sequence = generate_random_activity_sequence(instance_1)
-    #
-    # individual = evaluate_sequence(activities, total_resource, alternative_chains, random_sequence, sequence_pool)
-    #
-    # for item in sequence_pool:
-    #     print_activity_sequence(item[0])
-    #     schedule = create_schedule(item[0], total_resource)
-    #     draw_schedule(schedule, total_resource)
-    #     print_schedule_formatted(schedule)
-    #     for temp in item[1:]:
-    #         print(temp, end=' ')
-    #     print()
+    random_sequence = generate_random_activity_sequence(instance_1)
+
+    individual = evaluate_sequence(activities, total_resource, alternative_chains, random_sequence, sequence_pool)
+
+    for item in sequence_pool:
+        print_activity_sequence(item[0])
+        schedule = create_schedule(item[0], total_resource)
+        draw_schedule(schedule, total_resource)
+        print_schedule_formatted(schedule)
+        for temp in item[1:]:
+            print(temp, end=' ')
+        print()
 
     # Create all possible alternative sequences
     # alternative_sequences = create_alternative_sequences(activities, original_sequence, alternative_chains)
