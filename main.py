@@ -353,7 +353,7 @@ def evaluate_finish_time(schedule):
     return max
 
 def evaluate_fitness(individual, coefficient):
-    return individual[1] + coefficient * individual[4]
+    return individual[1] + coefficient * individual[3]
 
 def create_individual(activities, total_resource, alternative_chains, sequence, sequence_pool):
     for item in sequence_pool:
@@ -367,7 +367,7 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
     pop = []
     pop_length = 40
     gene_num = 25
-    coefficient = 0.2
+    coefficient = 0.1
     predecessors = find_predecessors(instance)
 
     #Generate initial population
@@ -395,7 +395,11 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
         print_activity_sequence(individual[0][0])
         schedule = create_schedule(individual[0][0], total_resource)
         print_schedule_formatted(schedule)
-        print(individual[1])
+        print("Makespan = ", individual[0][1], ", ",
+              "Slacks = ", individual[0][2], ", ",
+              "Robustness = ", individual[0][3], ", ",
+              "Fintess = ", individual[1])
+        print()
         draw_schedule(schedule, total_resource)
 
 def replace_activity(activity_sequence, identifier, activity):
@@ -451,14 +455,23 @@ def evaluate_sequence(activities, total_resource, alternative_chains, original_s
     first_schedule = create_schedule(first_sequence, total_resource)
     robust = []
     robust.append((first_sequence, evaluate_finish_time(first_schedule), 0))
+
+    #Calculate slacks
     for sequence in sequences[1:]:
         slacks = 0
         schedule = create_schedule(sequence, total_resource)
         for i in range(0, len(schedule)):
             slacks += schedule[i][1] + schedule[i][0].time - first_schedule[i][1] - first_schedule[i][0].time
         robust.append((sequence, evaluate_finish_time(schedule), slacks))
-    robust = sorted(robust, key=lambda x: x[2])
-    individuals = rank_robustness(robust)
+
+    individuals = []
+    #Calculate robustness
+    for current_tuple in robust:
+        # Calculate the sum of differences for the current tuple
+        sum_of_differences = sum(t[2] - current_tuple[2] for t in robust)
+        # Append this sum to the current tuple
+        individuals.append(current_tuple + (sum_of_differences,))
+
     result = None
     for individual in individuals:
         if individual[0] == original_sequence:
@@ -467,26 +480,26 @@ def evaluate_sequence(activities, total_resource, alternative_chains, original_s
 
     return result
 
-def rank_robustness(robust):
-    ranked_tuples = []
-    current_rank = 1
-    previous_value = None
-    same_rank_counter = 0
-
-    for tup in robust:
-        # Check if the current value is the same as the previous one
-        if previous_value is not None and tup[2] == previous_value:
-            # If it's the same, assign the same rank
-            ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
-            same_rank_counter += 1
-        else:
-            # If it's different, update the rank and assign
-            current_rank += same_rank_counter
-            same_rank_counter = 1  # Reset counter
-            ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
-            previous_value = tup[2]
-
-    return ranked_tuples
+# def rank_robustness(robust):
+#     ranked_tuples = []
+#     current_rank = 1
+#     previous_value = None
+#     same_rank_counter = 0
+#
+#     for tup in robust:
+#         # Check if the current value is the same as the previous one
+#         if previous_value is not None and tup[2] == previous_value:
+#             # If it's the same, assign the same rank
+#             ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
+#             same_rank_counter += 1
+#         else:
+#             # If it's different, update the rank and assign
+#             current_rank += same_rank_counter
+#             same_rank_counter = 1  # Reset counter
+#             ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
+#             previous_value = tup[2]
+#
+#     return ranked_tuples
 
 # Example usage
 if __name__ == "__main__":
@@ -500,27 +513,29 @@ if __name__ == "__main__":
 
     # Test for all instances
 
-    # for instance in instances:
-    #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+    for instance in instances:
+        genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
 
     # Test for only one instance
-
-    instance_1 = instances[0]
+    # instance_1 = instances[0]
     # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
 
     # Test a random activity list and its all alternative sequences
-    random_sequence = generate_random_activity_sequence(instance_1)
+    # sequence = generate_random_activity_sequence(instance_1)
 
-    individual = evaluate_sequence(activities, total_resource, alternative_chains, random_sequence, sequence_pool)
+    # Test a specific activity list\
+    # sequence = generate_activity_sequence(instance_1, (1,2,5,3,4,6,8,10,7,9,11))
 
-    for item in sequence_pool:
-        print_activity_sequence(item[0])
-        schedule = create_schedule(item[0], total_resource)
-        draw_schedule(schedule, total_resource)
-        print_schedule_formatted(schedule)
-        for temp in item[1:]:
-            print(temp, end=' ')
-        print()
+    # individual = evaluate_sequence(activities, total_resource, alternative_chains, sequence, sequence_pool)
+    #
+    # for item in sequence_pool:
+    #     print_activity_sequence(item[0])
+    #     schedule = create_schedule(item[0], total_resource)
+    #     draw_schedule(schedule, total_resource)
+    #     print_schedule_formatted(schedule)
+    #     for temp in item[1:]:
+    #         print(temp, end=' ')
+    #     print()
 
     # Create all possible alternative sequences
     # alternative_sequences = create_alternative_sequences(activities, original_sequence, alternative_chains)
