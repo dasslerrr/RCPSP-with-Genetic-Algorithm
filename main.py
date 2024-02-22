@@ -363,45 +363,6 @@ def create_individual(activities, total_resource, alternative_chains, sequence, 
     individual = evaluate_sequence(activities, total_resource, alternative_chains, sequence, sequence_pool)
     return individual
 
-def genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool):
-    pop = []
-    pop_length = 40
-    gene_num = 25
-    coefficient = 0.1
-    predecessors = find_predecessors(instance)
-
-    #Generate initial population
-    for i in range(0, pop_length):
-        sequence = generate_random_activity_sequence(instance)
-        individual = create_individual(activities, total_resource, alternative_chains, sequence, sequence_pool)
-        fitness = evaluate_fitness(individual, coefficient)
-        pop.append((individual, fitness))
-
-    #
-    for i in range(0, gene_num):
-        random.shuffle(pop)
-        pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
-        for pair in pairs:
-            son_sequence, daughter_sequence = two_point_crossover(pair[0][0][0], pair[1][0][0])
-            son_sequence = mutate_individual(son_sequence, 0.05, predecessors)
-            daughter_sequence = mutate_individual(daughter_sequence, 0.05, predecessors)
-            son_individual = create_individual(activities, total_resource, alternative_chains, son_sequence, sequence_pool)
-            daughter_individual = create_individual(activities, total_resource, alternative_chains, daughter_sequence, sequence_pool)
-            pop.append((son_individual, evaluate_fitness(son_individual, coefficient)))
-            pop.append((daughter_individual, evaluate_fitness(daughter_individual, coefficient)))
-        pop = ranking_selection(pop)
-
-    for individual in pop[:1]:
-        print_activity_sequence(individual[0][0])
-        schedule = create_schedule(individual[0][0], total_resource)
-        print_schedule_formatted(schedule)
-        print("Makespan = ", individual[0][1], ", ",
-              "Slacks = ", individual[0][2], ", ",
-              "Robustness = ", individual[0][3], ", ",
-              "Fintess = ", individual[1])
-        print()
-        draw_schedule(schedule, total_resource)
-
 def replace_activity(activity_sequence, identifier, activity):
     temp = [activity if act.identifier == identifier else act for act in activity_sequence]
     return temp
@@ -480,26 +441,44 @@ def evaluate_sequence(activities, total_resource, alternative_chains, original_s
 
     return result
 
-# def rank_robustness(robust):
-#     ranked_tuples = []
-#     current_rank = 1
-#     previous_value = None
-#     same_rank_counter = 0
-#
-#     for tup in robust:
-#         # Check if the current value is the same as the previous one
-#         if previous_value is not None and tup[2] == previous_value:
-#             # If it's the same, assign the same rank
-#             ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
-#             same_rank_counter += 1
-#         else:
-#             # If it's different, update the rank and assign
-#             current_rank += same_rank_counter
-#             same_rank_counter = 1  # Reset counter
-#             ranked_tuples.append((tup[0], tup[1], tup[2], current_rank, current_rank / len(robust)))
-#             previous_value = tup[2]
-#
-#     return ranked_tuples
+def genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool):
+    pop = []
+    pop_length = 40
+    gene_num = 25
+    coefficient = 0.1
+    predecessors = find_predecessors(instance)
+
+    #Generate initial population
+    for i in range(0, pop_length):
+        sequence = generate_random_activity_sequence(instance)
+        individual = create_individual(activities, total_resource, alternative_chains, sequence, sequence_pool)
+        fitness = evaluate_fitness(individual, coefficient)
+        pop.append((individual, fitness))
+
+    #
+    for i in range(0, gene_num):
+        random.shuffle(pop)
+        pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
+        for pair in pairs:
+            son_sequence, daughter_sequence = two_point_crossover(pair[0][0][0], pair[1][0][0])
+            son_sequence = mutate_individual(son_sequence, 0.05, predecessors)
+            daughter_sequence = mutate_individual(daughter_sequence, 0.05, predecessors)
+            son_individual = create_individual(activities, total_resource, alternative_chains, son_sequence, sequence_pool)
+            daughter_individual = create_individual(activities, total_resource, alternative_chains, daughter_sequence, sequence_pool)
+            pop.append((son_individual, evaluate_fitness(son_individual, coefficient)))
+            pop.append((daughter_individual, evaluate_fitness(daughter_individual, coefficient)))
+        pop = ranking_selection(pop)
+
+    for individual in pop[:1]:
+        print_activity_sequence(individual[0][0])
+        schedule = create_schedule(individual[0][0], total_resource)
+        print_schedule_formatted(schedule)
+        print("Makespan = ", individual[0][1], ", ",
+              "Slacks = ", individual[0][2], ", ",
+              "Robustness = ", individual[0][3], ", ",
+              "Fintess = ", individual[1])
+        print()
+        draw_schedule(schedule, total_resource)
 
 # Example usage
 if __name__ == "__main__":
