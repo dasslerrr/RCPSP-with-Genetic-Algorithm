@@ -2,7 +2,7 @@ import random
 
 # Define total resources and number of activities
 total_resources = 6
-num_activities = 30
+num_activities = 10
 
 # Initialize activities dictionary, alternative chains list, and predecessors
 activities = {}
