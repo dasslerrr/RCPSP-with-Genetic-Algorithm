@@ -1,6 +1,8 @@
 import csv
 import itertools
 import random
+import glob
+import time
 
 import matplotlib.pyplot as plt
 
@@ -337,7 +339,7 @@ def is_valid_swap(individual, i, j, predecessors):
 
 def ranking_selection(population):
     # Sort the population based on fitness (assuming fitness is the second element of the tuple)
-    sorted_population = sorted(population, key=lambda x: x[1])
+    sorted_population = sorted(population, key=lambda x: x[4])
 
     # Cut half of the population
     half_population_size = len(sorted_population) // 2
@@ -355,12 +357,12 @@ def evaluate_finish_time(schedule):
 def evaluate_fitness(individual, coefficient):
     return individual[1] + coefficient * individual[3]
 
-def create_individual(activities, total_resource, alternative_chains, sequence, sequence_pool):
+def create_individual(activities, total_resource, coefficient, alternative_chains, sequence, sequence_pool):
     for item in sequence_pool:
         if sequence == item[0]:
             individual = item
             return individual
-    individual = evaluate_sequence(activities, total_resource, alternative_chains, sequence, sequence_pool)
+    individual = evaluate_sequence(activities, total_resource, coefficient, alternative_chains, sequence, sequence_pool)
     return individual
 
 def replace_activity(activity_sequence, identifier, activity):
@@ -410,7 +412,7 @@ def generate_full_enumeration(activities, alternative_chains):
 
     return all_combinations
 
-def evaluate_sequence(activities, total_resource, alternative_chains, original_sequence, sequence_pool):
+def evaluate_sequence(activities, total_resource, coefficient, alternative_chains, original_sequence, sequence_pool):
     sequences = create_alternative_sequences(activities, original_sequence, alternative_chains)
     first_sequence = sequences[0]
     first_schedule = create_schedule(first_sequence, total_resource)
@@ -430,8 +432,11 @@ def evaluate_sequence(activities, total_resource, alternative_chains, original_s
     for current_tuple in robust:
         # Calculate the sum of differences for the current tuple
         sum_of_differences = sum(t[2] - current_tuple[2] for t in robust)
+        sum_of_differences /= len(robust)
+        current_tuple = current_tuple + (sum_of_differences,)
+        fitness = evaluate_fitness(current_tuple, coefficient)
         # Append this sum to the current tuple
-        individuals.append(current_tuple + (sum_of_differences,))
+        individuals.append(current_tuple + (fitness,))
 
     result = None
     for individual in individuals:
@@ -441,71 +446,106 @@ def evaluate_sequence(activities, total_resource, alternative_chains, original_s
 
     return result
 
+def print_individual(individual):
+    print_activity_sequence(individual[0])
+    schedule = create_schedule(individual[0], total_resource)
+    print_schedule_formatted(schedule)
+    print("Makespan = ", individual[1], ", ",
+          "Slacks = ", individual[2], ", ",
+          "Robustness = ", individual[3], ", ",
+          "Fitness = ", individual[4])
+    print()
+    # draw_schedule(schedule, total_resource)
+
+
 def genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool):
     pop = []
     pop_length = 40
     gene_num = 25
-    coefficient = 0.1
+    coefficient = 0.05
     predecessors = find_predecessors(instance)
 
     #Generate initial population
     for i in range(0, pop_length):
         sequence = generate_random_activity_sequence(instance)
-        individual = create_individual(activities, total_resource, alternative_chains, sequence, sequence_pool)
-        fitness = evaluate_fitness(individual, coefficient)
-        pop.append((individual, fitness))
+        individual = create_individual(activities, total_resource, coefficient, alternative_chains, sequence, sequence_pool)
+        pop.append(individual)
 
     #
     for i in range(0, gene_num):
         random.shuffle(pop)
         pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
         for pair in pairs:
-            son_sequence, daughter_sequence = two_point_crossover(pair[0][0][0], pair[1][0][0])
+            son_sequence, daughter_sequence = two_point_crossover(pair[0][0], pair[1][0])
             son_sequence = mutate_individual(son_sequence, 0.05, predecessors)
             daughter_sequence = mutate_individual(daughter_sequence, 0.05, predecessors)
-            son_individual = create_individual(activities, total_resource, alternative_chains, son_sequence, sequence_pool)
-            daughter_individual = create_individual(activities, total_resource, alternative_chains, daughter_sequence, sequence_pool)
-            pop.append((son_individual, evaluate_fitness(son_individual, coefficient)))
-            pop.append((daughter_individual, evaluate_fitness(daughter_individual, coefficient)))
+            son_individual = create_individual(activities, total_resource, coefficient, alternative_chains, son_sequence, sequence_pool)
+            daughter_individual = create_individual(activities, total_resource, coefficient, alternative_chains, daughter_sequence, sequence_pool)
+            pop.append(son_individual)
+            pop.append(daughter_individual)
         pop = ranking_selection(pop)
 
-    for individual in pop[:1]:
-        print_activity_sequence(individual[0][0])
-        schedule = create_schedule(individual[0][0], total_resource)
-        print_schedule_formatted(schedule)
-        print("Makespan = ", individual[0][1], ", ",
-              "Slacks = ", individual[0][2], ", ",
-              "Robustness = ", individual[0][3], ", ",
-              "Fintess = ", individual[1])
-        print()
-        draw_schedule(schedule, total_resource)
+    # Print out the best solution
+    # for individual in pop[:1]:
+    #     print_individual(individual)
+
 
 # Example usage
 if __name__ == "__main__":
 
-    # Create activity from csv
-    file_path = r"project_instances/instance6.csv"
-    total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
 
-    instances = generate_full_enumeration(activities, alternative_chains)
-    sequence_pool = []
+    #Test one file
+    # file_path = r"project_instances/J15x2/J15x2_01.csv"
+    # total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    #
+    # instances = generate_full_enumeration(activities, alternative_chains)
+    # sequence_pool = []
 
-    # Test for all instances
 
-    for instance in instances:
-        genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+    # for instance in instances:
+    #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+
+    # Test whole directory
+    result = []
+    file_pattern = "project_instances/J30x2/*.csv"
+    compute_times = []
+
+
+    for file_path in glob.glob(file_pattern):
+
+        total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+
+        instances = generate_full_enumeration(activities, alternative_chains)
+        sequence_pool = []
+
+        # Test for all instances
+        start_time = time.time()
+        for instance in instances:
+            genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+        end_time = time.time()
+        compute_times.append(end_time - start_time)
+        sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
+        best_individual = sequence_pool[0]
+        print_individual(best_individual)
+
+        result.append((best_individual[1], best_individual[3], best_individual[4]))
+
+    for item in result:
+        print(item)
+    # show compute time
+    # print(compute_times)
 
     # Test for only one instance
-    # instance_1 = instances[0]
-    # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
-
-    # Test a random activity list and its all alternative sequences
+    # instance_1 = instances[3]
+    # # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
+    #
+    # # Test a random activity list and its all alternative sequences
     # sequence = generate_random_activity_sequence(instance_1)
-
-    # Test a specific activity list\
-    # sequence = generate_activity_sequence(instance_1, (1,2,5,3,4,6,8,10,7,9,11))
-
-    # individual = evaluate_sequence(activities, total_resource, alternative_chains, sequence, sequence_pool)
+    #
+    # # Test a specific activity list\
+    # # sequence = generate_activity_sequence(instance_1, (1,2,5,3,4,6,8,10,7,9,11))
+    #
+    # individual = evaluate_sequence(activities, total_resource, 0.5, alternative_chains, sequence, sequence_pool)
     #
     # for item in sequence_pool:
     #     print_activity_sequence(item[0])

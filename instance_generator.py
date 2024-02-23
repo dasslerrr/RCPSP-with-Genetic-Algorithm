@@ -2,7 +2,7 @@ import random
 
 # Define total resources and number of activities
 total_resources = 6
-num_activities = 10
+num_activities = 30
 
 # Initialize activities dictionary, alternative chains list, and predecessors
 activities = {}
@@ -57,7 +57,7 @@ remaining_activities = list(range(5, num_activities - 1))
 # Create initial activities with successors
 activity_ids = list(range(1, num_activities + 1))
 for id in activity_ids:
-    resource = random.randint(1, total_resources - 1)
+    resource = random.randint(1, total_resources)
     time = random.randint(2, 7)
 
     successors = generate_successors_v5(id, mandatory_successors, remaining_activities)
