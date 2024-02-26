@@ -282,6 +282,66 @@ def draw_rectangles(schedule, total_resource, total_time):
 
     plt.show()
 
+def uniform_crossover(father, mother):
+    if not father or not mother or len(father) != len(mother):
+        raise ValueError("Father and mother schedules must be non-empty and of equal length")
+
+    len_schedule = len(father)
+    q = random.randint(0, len_schedule - 2)
+
+    daughter = []
+    son = []
+
+    random_sequence = [random.choice([0, 1]) for _ in range(len_schedule)]
+    for number in random_sequence:
+        if number == 0:
+            for act in father:
+                if act not in daughter:
+                    daughter.append(act)
+                    break
+            for act in mother:
+                if act not in son:
+                    son.append(act)
+                    break
+        else:
+            for act in mother:
+                if act not in daughter:
+                    daughter.append(act)
+                    break
+            for act in father:
+                if act not in son:
+                    son.append(act)
+                    break
+
+    print(random_sequence)
+
+    return son, daughter
+
+
+def one_point_crossover(father, mother):
+    if not father or not mother or len(father) != len(mother):
+        raise ValueError("Father and mother schedules must be non-empty and of equal length")
+
+    len_schedule = len(father)
+    q = random.randint(0, len_schedule - 2)
+
+    daughter = []
+    son = []
+
+    daughter.extend(mother[:q])
+    son.extend(father[:q])
+
+    for act in father:
+        if act not in daughter and len(daughter) < len_schedule:
+            daughter.append(act)
+
+    for act in mother:
+        if act not in son and len(son) < len_schedule:
+            son.append(act)
+
+    print(q)
+    return son, daughter
+
 def two_point_crossover(father, mother):
     # Ensure father and mother schedules are not empty and have the same length
     if not father or not mother or len(father) != len(mother):
@@ -315,6 +375,8 @@ def two_point_crossover(father, mother):
     for act in father:
         if act not in son and len(son) < len_schedule:
             son.append(act)
+
+    print(q1,q2)
 
     return son, daughter
 
@@ -494,44 +556,44 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
 if __name__ == "__main__":
 
 
-    #Test one file
-    # file_path = r"project_instances/J15x2/J15x2_01.csv"
-    # total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
-    #
-    # instances = generate_full_enumeration(activities, alternative_chains)
-    # sequence_pool = []
+    # Test one file
+    file_path = r"project_instances/instance6.csv"
+    total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    instances = generate_full_enumeration(activities, alternative_chains)
+    sequence_pool = []
 
 
     # for instance in instances:
     #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
 
     # Test whole directory
-    result = []
-    file_pattern = "project_instances/J30x2/*.csv"
-    compute_times = []
+    # result = []
+    # file_pattern = "project_instances/J30x2/*.csv"
+    # compute_times = []
+    #
+    #
+    # for file_path in glob.glob(file_pattern):
+    #
+    #     total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    #
+    #     instances = generate_full_enumeration(activities, alternative_chains)
+    #     sequence_pool = []
+    #
+    #     # Test for all instances
+    #     start_time = time.time()
+    #     for instance in instances:
+    #         genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+    #     end_time = time.time()
+    #     compute_times.append(end_time - start_time)
+    #     sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
+    #     best_individual = sequence_pool[0]
+    #     print_individual(best_individual)
+    #
+    #     result.append((best_individual[1], best_individual[3], best_individual[4]))
+    #
+    # for item in result:
+    #     print(item)
 
-
-    for file_path in glob.glob(file_pattern):
-
-        total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
-
-        instances = generate_full_enumeration(activities, alternative_chains)
-        sequence_pool = []
-
-        # Test for all instances
-        start_time = time.time()
-        for instance in instances:
-            genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-        end_time = time.time()
-        compute_times.append(end_time - start_time)
-        sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
-        best_individual = sequence_pool[0]
-        print_individual(best_individual)
-
-        result.append((best_individual[1], best_individual[3], best_individual[4]))
-
-    for item in result:
-        print(item)
     # show compute time
     # print(compute_times)
 
@@ -566,64 +628,28 @@ if __name__ == "__main__":
     #     alternative_schedules.append((sequence, schedule))
     #     draw_schedule(schedule, total_resource)
     #
-    # first_sequence = alternative_schedules[0][0]
-    # first_schedule = alternative_schedules[0][1]
-    # robust = []
-    # robust.append((first_sequence, evaluate_finish_time(first_schedule), 0))
-    # for sequence, schedule in alternative_schedules[1:]:
-    #     slacks = 0
-    #     for i in range(0, len(schedule)):
-    #         slacks += schedule[i][1] + schedule[i][0].time - first_schedule[i][1] - first_schedule[i][0].time
-    #     robust.append((sequence, evaluate_finish_time(schedule), slacks))
-    #
-    # robust = sorted(robust, key=lambda x: x[2])
-    # # for item in robust:
-    # #     print_activity_sequence(item[0])
-    # #     print(item[1])
-    # #     print(item[2])
-    #
-    # ranked_tuples = []
-    # current_rank = 1
-    # previous_value = None
-    # same_rank_counter = 0
-    #
-    # for tup in robust:
-    #     # Check if the current value is the same as the previous one
-    #     if previous_value is not None and tup[2] == previous_value:
-    #         # If it's the same, assign the same rank
-    #         ranked_tuples.append((tup, current_rank))
-    #         same_rank_counter += 1
-    #     else:
-    #         # If it's different, update the rank and assign
-    #         current_rank += same_rank_counter
-    #         same_rank_counter = 1  # Reset counter
-    #         ranked_tuples.append((tup, current_rank))
-    #         previous_value = tup[2]
-    #
-    # for tup in ranked_tuples:
-    #     print_activity_sequence(tup[0][0])
-    #     print(tup[0][1])
-    #     print(tup[0][2])
-    #     print(tup[1])
-
 
     # Test cross_over_function
-    # father = generate_random_activity_sequence(activities)
-    # mother = generate_random_activity_sequence(activities)
-    #
-    # print_activity_sequence(father)
-    # print_activity_sequence(mother)
-    #
-    # son, daughter = two_point_crossover(father, mother)
-    # print_activity_sequence(daughter)
-    # daughter_schedule = create_schedule(daughter, 6)
-    # print_schedule_formatted(daughter_schedule)
-    # draw_schedule(daughter_schedule, 6)
-    #
-    # print_activity_sequence(son)
-    # son_schedule = create_schedule(son, 6)
-    # print_schedule_formatted(son_schedule)
-    # draw_schedule(son_schedule, 6)
+
+    father = generate_random_activity_sequence(activities)
+    mother = generate_random_activity_sequence(activities)
+
+    print("father: ", end=' ')
+    print_activity_sequence(father)
+    print("mother: ", end=' ')
+    print_activity_sequence(mother)
+
+    son, daughter = uniform_crossover(father, mother)
+
+    print("son: ", end=' ')
+    print_activity_sequence(son)
+    son_schedule = create_schedule(son, 6)
+
+    print("dau: ", end=' ')
+    print_activity_sequence(daughter)
+    daughter_schedule = create_schedule(daughter, 6)
+
+
 
     # Test mutation function
     # mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
