@@ -313,7 +313,7 @@ def uniform_crossover(father, mother):
                     son.append(act)
                     break
 
-    print(random_sequence)
+    # print(random_sequence)
 
     return son, daughter
 
@@ -339,7 +339,7 @@ def one_point_crossover(father, mother):
         if act not in son and len(son) < len_schedule:
             son.append(act)
 
-    print(q)
+    # print(q)
     return son, daughter
 
 def two_point_crossover(father, mother):
@@ -376,7 +376,7 @@ def two_point_crossover(father, mother):
         if act not in son and len(son) < len_schedule:
             son.append(act)
 
-    print(q1,q2)
+    # print(q1,q2)
 
     return son, daughter
 
@@ -548,43 +548,79 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
         pop = ranking_selection(pop)
 
     # Print out the best solution
-    # for individual in pop[:1]:
-    #     print_individual(individual)
+    for individual in pop[:1]:
+        print_individual(individual)
 
+
+def test_pool_x2():
+    result = [0, 0, 0, 0]
+    for i in range (0, 10):
+        file_pattern = "project_instances/J15x2/*.csv"
+        for file_path in glob.glob(file_pattern):
+            compute_times = []
+            total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+
+            instances = generate_full_enumeration(activities, alternative_chains)
+            sequence_pool = []
+
+            # Test for all instances
+            for instance in instances:
+                start_time = time.time()
+                genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+                end_time = time.time()
+                compute_times.append(end_time - start_time)
+
+            temp = compute_times[0]
+            compute_times[0] = 1
+            for j in range(1, len(compute_times)):
+                compute_times[j] = compute_times[j] / temp
+
+            result = [item1 + item2 for item1, item2 in zip(result, compute_times)]
+        result = [x / 10 for x in result]
+    print(result)
 
 # Example usage
 if __name__ == "__main__":
 
+    # Test pool performance
+    # test_pool_x2()
+
 
     # Test one file
-    file_path = r"project_instances/instance6.csv"
+    file_path = r"project_instances/J30x3/J30x3_11.csv"
     total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
     instances = generate_full_enumeration(activities, alternative_chains)
     sequence_pool = []
+    compute_times = []
 
+    for instance in instances:
+        start_time = time.time()
+        genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+        end_time = time.time()
+        compute_times.append(end_time - start_time)
 
-    # for instance in instances:
-    #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+    print(compute_times)
 
     # Test whole directory
     # result = []
-    # file_pattern = "project_instances/J30x2/*.csv"
+    # file_pattern = "project_instances/J15x3/*.csv"
     # compute_times = []
-    #
-    #
+
+
     # for file_path in glob.glob(file_pattern):
-    #
+    #     compute_times = []
     #     total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
     #
     #     instances = generate_full_enumeration(activities, alternative_chains)
     #     sequence_pool = []
     #
     #     # Test for all instances
-    #     start_time = time.time()
     #     for instance in instances:
+    #         start_time = time.time()
     #         genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-    #     end_time = time.time()
-    #     compute_times.append(end_time - start_time)
+    #         end_time = time.time()
+    #         compute_times.append(end_time - start_time)
+    #     print(compute_times)
     #     sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
     #     best_individual = sequence_pool[0]
     #     print_individual(best_individual)
@@ -605,10 +641,11 @@ if __name__ == "__main__":
     # sequence = generate_random_activity_sequence(instance_1)
     #
     # # Test a specific activity list\
-    # # sequence = generate_activity_sequence(instance_1, (1,2,5,3,4,6,8,10,7,9,11))
-    #
+    # instance_1 = instances[0]
+    # sequence = generate_activity_sequence(instance_1, (1,2,5,3,4,6,8,10,7,9,11))
+    # 
     # individual = evaluate_sequence(activities, total_resource, 0.5, alternative_chains, sequence, sequence_pool)
-    #
+    # 
     # for item in sequence_pool:
     #     print_activity_sequence(item[0])
     #     schedule = create_schedule(item[0], total_resource)
@@ -631,28 +668,32 @@ if __name__ == "__main__":
 
     # Test cross_over_function
 
-    father = generate_random_activity_sequence(activities)
-    mother = generate_random_activity_sequence(activities)
-
-    print("father: ", end=' ')
-    print_activity_sequence(father)
-    print("mother: ", end=' ')
-    print_activity_sequence(mother)
-
-    son, daughter = uniform_crossover(father, mother)
-
-    print("son: ", end=' ')
-    print_activity_sequence(son)
-    son_schedule = create_schedule(son, 6)
-
-    print("dau: ", end=' ')
-    print_activity_sequence(daughter)
-    daughter_schedule = create_schedule(daughter, 6)
+    # instance_1 = instances[0]
+    # father = generate_random_activity_sequence(instance_1)
+    # mother = generate_random_activity_sequence(instance_1)
+    #
+    # print("father: ", end=' ')
+    # print_activity_sequence(father)
+    # print("mother: ", end=' ')
+    # print_activity_sequence(mother)
+    #
+    # son, daughter = uniform_crossover(father, mother)
+    #
+    # print("son: ", end=' ')
+    # print_activity_sequence(son)
+    # son_schedule = create_schedule(son, 6)
+    #
+    # print("dau: ", end=' ')
+    # print_activity_sequence(daughter)
+    # daughter_schedule = create_schedule(daughter, 6)
 
 
 
     # Test mutation function
-    # mutated = mutate_individual(daughter, 0.5, find_predecessors(activities))
+    # instance_1 = instances[0]
+    # activity_sequence = generate_random_activity_sequence(instance_1)
+    # print_activity_sequence(activity_sequence)
+    # mutated = mutate_individual(activity_sequence, 0.5, find_predecessors(activities))
     # print_activity_sequence(mutated)
     # mutated_schedule = create_schedule(mutated, 6)
     # print_schedule_formatted(mutated_schedule)
