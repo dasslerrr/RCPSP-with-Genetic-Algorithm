@@ -60,7 +60,7 @@ def generate_csv_content(n_act, chain):
     # Create initial activities with successors
     activity_ids = list(range(1, num_activities + 1))
     for id in activity_ids:
-        resource = random.randint(1, total_resources)
+        resource = random.randint(1, total_resources - 2)
         time = random.randint(2, 7)
 
         successors = generate_successors_v5(id, mandatory_successors, remaining_activities)
@@ -83,7 +83,7 @@ def generate_csv_content(n_act, chain):
     for original_id in random.sample(activity_ids, num_alt_chains):
         # Create a duplicate named like "2x"
         duplicate_name = f"'{original_id}x'"
-        duplicate_resource = random.randint(1, total_resources)
+        duplicate_resource = random.randint(1, total_resources - 2)
         duplicate_time = random.randint(2, 7)
         activities[duplicate_name] = (duplicate_resource, duplicate_time, activities[original_id][2])
 
@@ -121,18 +121,20 @@ def generate_csv_content(n_act, chain):
 
 # Define the number of times you want to run the script
 # num_runs = 5
-num_act = 30
+num_act = 60
 num_chain = 3
 
 # Create a directory for the CSV files
-folder_path = 'project_instances/J30x3'
+folder_path = 'project_instances/J60x3'
 os.makedirs(folder_path, exist_ok=True)
 
 # Run the script multiple times and save each output
-for i in range(10, 30):
+for i in range(0, 30):
     csv_content = generate_csv_content(num_act, num_chain)
     file_name = f'J{num_act}x{num_chain}_{i + 1}.csv'
     file_path = os.path.join(folder_path, file_name)
 
     with open(file_path, 'w') as file:
         file.write(csv_content)
+
+

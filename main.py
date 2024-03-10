@@ -409,6 +409,35 @@ def ranking_selection(population):
 
     return selected_population
 
+def two_tournament_selection(population):
+    temp = len(population) / 2
+    while len(population) > temp:
+        # Randomly select two different individuals
+        i1, i2 = random.sample(population, 2)
+
+        # Compare their fitness and remove the one with higher fitness
+        if i1[4] >= i2[4]:
+            population.remove(i1)
+        else:
+            population.remove(i2)
+
+    return population
+
+def three_tournament_selection(population):
+    temp = len(population) / 2
+    while len(population) > temp:
+        # Randomly select three different individuals
+        i1, i2, i3 = random.sample(population, 3)
+
+        # Determine the individual with the highest fitness
+        max_fit_individual = max(i1, i2, i3, key=lambda ind: ind[4])
+
+        # Remove the individual with the highest fitness
+        population.remove(max_fit_individual)
+
+    return population
+
+
 def evaluate_finish_time(schedule):
     max = 0
     for act, start_time in schedule:
@@ -508,7 +537,7 @@ def evaluate_sequence(activities, total_resource, coefficient, alternative_chain
 
     return result
 
-def print_individual(individual):
+def print_individual(individual, total_resource):
     print_activity_sequence(individual[0])
     schedule = create_schedule(individual[0], total_resource)
     print_schedule_formatted(schedule)
@@ -517,14 +546,14 @@ def print_individual(individual):
           "Robustness = ", individual[3], ", ",
           "Fitness = ", individual[4])
     print()
-    # draw_schedule(schedule, total_resource)
+    draw_schedule(schedule, total_resource)
 
 
 def genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool):
     pop = []
-    pop_length = 40
-    gene_num = 25
-    coefficient = 0.05
+    pop_length = 20
+    gene_num = 5
+    coefficient = 0.25
     predecessors = find_predecessors(instance)
 
     #Generate initial population
@@ -539,8 +568,8 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
         pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
         for pair in pairs:
             son_sequence, daughter_sequence = two_point_crossover(pair[0][0], pair[1][0])
-            son_sequence = mutate_individual(son_sequence, 0.05, predecessors)
-            daughter_sequence = mutate_individual(daughter_sequence, 0.05, predecessors)
+            son_sequence = mutate_individual(son_sequence, 0.1, predecessors)
+            daughter_sequence = mutate_individual(daughter_sequence, 0.1, predecessors)
             son_individual = create_individual(activities, total_resource, coefficient, alternative_chains, son_sequence, sequence_pool)
             daughter_individual = create_individual(activities, total_resource, coefficient, alternative_chains, daughter_sequence, sequence_pool)
             pop.append(son_individual)
@@ -548,36 +577,62 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
         pop = ranking_selection(pop)
 
     # Print out the best solution
-    for individual in pop[:1]:
-        print_individual(individual)
+    # for individual in pop[:1]:
+    #     print_individual(individual, total_resource)
 
 
 def test_pool_x2():
-    result = [0, 0, 0, 0]
-    for i in range (0, 10):
-        file_pattern = "project_instances/J15x2/*.csv"
-        for file_path in glob.glob(file_pattern):
-            compute_times = []
-            total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    # result = [0, 0, 0, 0]
+    result = [0, 0, 0, 0, 0, 0, 0, 0]
+    file_pattern = "project_instances/J30x2/*.csv"
+    for file_path in glob.glob(file_pattern):
+        compute_times = []
+        total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
 
-            instances = generate_full_enumeration(activities, alternative_chains)
-            sequence_pool = []
+        instances = generate_full_enumeration(activities, alternative_chains)
+        sequence_pool = []
 
-            # Test for all instances
-            for instance in instances:
-                start_time = time.time()
-                genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-                end_time = time.time()
-                compute_times.append(end_time - start_time)
+        # Test for all instances
+        for instance in instances:
+            start_time = time.time()
+            genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+            end_time = time.time()
+            compute_times.append(end_time - start_time)
+        print(compute_times)
+        temp = compute_times[0]
+        compute_times[0] = 1
+        for j in range(1, len(compute_times)):
+            compute_times[j] = compute_times[j] / temp
 
-            temp = compute_times[0]
-            compute_times[0] = 1
-            for j in range(1, len(compute_times)):
-                compute_times[j] = compute_times[j] / temp
-
-            result = [item1 + item2 for item1, item2 in zip(result, compute_times)]
-        result = [x / 10 for x in result]
+        result = [item1 + item2 for item1, item2 in zip(result, compute_times)]
+    result = [x / 30 for x in result]
     print(result)
+
+def makespan_robustness_fitness():
+    file_pattern = "project_instances/J30x2/*.csv"
+
+    for file_path in glob.glob(file_pattern):
+        total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+        result = []
+        instances = generate_full_enumeration(activities, alternative_chains)
+        sequence_pool = []
+
+        start_time = time.time()
+        # Test for all instances
+        for instance in instances:
+
+            genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+
+        end_time = time.time()
+        compute_times = (end_time - start_time)
+
+        sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
+        best_individual = sequence_pool[0]
+        # print_individual(best_individual, total_resource)
+        result.append((best_individual[1], best_individual[3], best_individual[4]))
+        print(result, end=", ")
+        print(compute_times)
+
 
 # Example usage
 if __name__ == "__main__":
@@ -585,21 +640,23 @@ if __name__ == "__main__":
     # Test pool performance
     # test_pool_x2()
 
+    # test coffiecient
+    makespan_robustness_fitness()
 
     # Test one file
-    file_path = r"project_instances/J30x3/J30x3_11.csv"
-    total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
-    instances = generate_full_enumeration(activities, alternative_chains)
-    sequence_pool = []
-    compute_times = []
-
-    for instance in instances:
-        start_time = time.time()
-        genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-        end_time = time.time()
-        compute_times.append(end_time - start_time)
-
-    print(compute_times)
+    # file_path = r"project_instances/J15x3/J15x3_2.csv"
+    # total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    # instances = generate_full_enumeration(activities, alternative_chains)
+    # sequence_pool = []
+    # compute_times = []
+    #
+    # for instance in instances:
+    #     start_time = time.time()
+    #     genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+    #     end_time = time.time()
+    #     compute_times.append(end_time - start_time)
+    #
+    # print(compute_times)
 
     # Test whole directory
     # result = []
@@ -623,7 +680,7 @@ if __name__ == "__main__":
     #     print(compute_times)
     #     sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
     #     best_individual = sequence_pool[0]
-    #     print_individual(best_individual)
+    #     print_individual(best_individual, total_resource)
     #
     #     result.append((best_individual[1], best_individual[3], best_individual[4]))
     #
