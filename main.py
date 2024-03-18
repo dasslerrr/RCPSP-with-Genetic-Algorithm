@@ -551,9 +551,9 @@ def print_individual(individual, total_resource):
 
 def genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool):
     pop = []
-    pop_length = 20
-    gene_num = 5
-    coefficient = 0.25
+    pop_length = 10
+    gene_num = 30
+    coefficient = 0.1
     predecessors = find_predecessors(instance)
 
     #Generate initial population
@@ -564,6 +564,10 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
 
     #
     for i in range(0, gene_num):
+        # This is for #gen seeking
+        # print(i, end=', ')
+
+
         random.shuffle(pop)
         pairs = [pop[i:i+2] for i in range(0, len(pop), 2)]
         for pair in pairs:
@@ -575,6 +579,10 @@ def genetic_algorithm(activities, alternative_chains, instance, total_resource, 
             pop.append(son_individual)
             pop.append(daughter_individual)
         pop = ranking_selection(pop)
+
+        # This is also the #gen seeking
+        # temp = pop[0]
+        # print(temp[4])
 
     # Print out the best solution
     # for individual in pop[:1]:
@@ -641,7 +649,7 @@ if __name__ == "__main__":
     # test_pool_x2()
 
     # test coffiecient
-    makespan_robustness_fitness()
+    # makespan_robustness_fitness()
 
     # Test one file
     # file_path = r"project_instances/J15x3/J15x3_2.csv"
@@ -659,28 +667,28 @@ if __name__ == "__main__":
     # print(compute_times)
 
     # Test whole directory
-    # result = []
-    # file_pattern = "project_instances/J15x3/*.csv"
-    # compute_times = []
+    result = []
+    file_pattern = "project_instances/J15x2/*.csv"
+    compute_times = []
 
 
-    # for file_path in glob.glob(file_pattern):
-    #     compute_times = []
-    #     total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
-    #
-    #     instances = generate_full_enumeration(activities, alternative_chains)
-    #     sequence_pool = []
-    #
-    #     # Test for all instances
-    #     for instance in instances:
-    #         start_time = time.time()
-    #         genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
-    #         end_time = time.time()
-    #         compute_times.append(end_time - start_time)
-    #     print(compute_times)
-    #     sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
-    #     best_individual = sequence_pool[0]
-    #     print_individual(best_individual, total_resource)
+    for file_path in glob.glob(file_pattern):
+        compute_times = []
+        total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+
+        instances = generate_full_enumeration(activities, alternative_chains)
+        sequence_pool = []
+
+        # Test for all instances
+        start_time = time.time()
+        for instance in instances:
+            genetic_algorithm(activities, alternative_chains, instance, total_resource, sequence_pool)
+        end_time = time.time()
+        compute_times.append(end_time - start_time)
+        print(compute_times)
+        # sequence_pool = sorted(sequence_pool, key=lambda x: x[4])
+        # best_individual = sequence_pool[0]
+        # print_individual(best_individual, total_resource)
     #
     #     result.append((best_individual[1], best_individual[3], best_individual[4]))
     #
@@ -691,8 +699,12 @@ if __name__ == "__main__":
     # print(compute_times)
 
     # Test for only one instance
+    # file_path = r"project_instances/J30x3/J30x3_3.csv"
+    # total_resource, activities, alternative_chains = create_activities_from_csv(file_path)
+    # instances = generate_full_enumeration(activities, alternative_chains)
+    # sequence_pool = []
     # instance_1 = instances[3]
-    # # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
+    # genetic_algorithm(activities, alternative_chains, instance_1, total_resource, sequence_pool)
     #
     # # Test a random activity list and its all alternative sequences
     # sequence = generate_random_activity_sequence(instance_1)
